@@ -12,7 +12,7 @@ set -e
 #     | sh -s -- --url 'https://example/sub/xxx' --interval 86400 --exclude RU
 # ------------------------------------------------------------
 
-REPO="${PODKOP_SYNC_REPO:-OWNER/podkop-sub-sync-openwrt24}"
+REPO="${PODKOP_SYNC_REPO:-Trogvars/podkop-sub-sync-openwrt24}"
 BRANCH="${PODKOP_SYNC_BRANCH:-main}"
 
 log()
