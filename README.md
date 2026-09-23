@@ -245,7 +245,8 @@ sh <(wget -O - URL)
 Рекомендуется:
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/raw/refs/heads/main/install.sh \
+
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/refs/heads/main/install-openwrt24-github.sh \
     | sh -s -- \
         --url 'https://example.com/sub/xxxxx' \
         --interval 86400 \
@@ -255,7 +256,7 @@ wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/r
 Несколько стран:
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/raw/refs/heads/main/install.sh \
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/refs/heads/main/install-openwrt24-github.sh \
     | sh -s -- \
         --url 'https://example.com/sub/xxxxx' \
         --interval 86400 \
