@@ -559,7 +559,7 @@ find bin -name 'podkop-sub-sync_*.ipk'
 ## Установка IPK
 
 ```sh
-opkg install ./podkop-sub-sync_1.0.0-1_all.ipk
+opkg install ./podkop-sub-sync_1.1.0-1_all.ipk
 ```
 
 Пакет имеет:
@@ -581,7 +581,7 @@ PKG_RELEASE:=2
 Соберите новый пакет и установите:
 
 ```sh
-opkg install ./podkop-sub-sync_1.0.0-2_all.ipk
+opkg install ./podkop-sub-sync_1.1.0-2_all.ipk
 ```
 
 UCI-файл:
