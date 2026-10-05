@@ -52,16 +52,11 @@ fetch_script(){
 
 ensure_xhttp_stack(){
   if ! sing-box version 2>/dev/null | grep -qi extended; then
-    echo "XHTTP: sing-box-extended is required."
-    [ -r /dev/tty ] || {
-      echo "ERROR: sing-box-extended installer is interactive and no TTY is available."
-      echo "Run manually: wget -O /tmp/sb-ext.sh $SB_EXT_URL && sh /tmp/sb-ext.sh"
-      exit 1
-    }
+    echo "XHTTP: sing-box-extended is required; installing automatically..."
     fetch_script "$SB_EXT_URL" /tmp/sb-ext.sh
     chmod 700 /tmp/sb-ext.sh
-    echo "Starting interactive sing-box-extended installer..."
-    sh /tmp/sb-ext.sh </dev/tty >/dev/tty 2>&1
+    echo "XHTTP: selecting latest stable release and recommended install format..."
+    printf '1\n\n' | sh /tmp/sb-ext.sh || { echo "ERROR: sing-box-extended automatic installation failed"; exit 1; }
   fi
 
   sing-box version 2>/dev/null | grep -qi extended || {
