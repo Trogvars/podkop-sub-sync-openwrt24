@@ -1,4 +1,14 @@
 # Podkop Subscription Sync — OpenWrt 24.x
+> [!IMPORTANT]
+> Этот репозиторий **legacy / frozen at 1.3.2**. Дальнейшая разработка объединена в
+> **[Trogvars/podkop-sub-sync](https://github.com/Trogvars/podkop-sub-sync)** для OpenWrt 24.x и 25.x.
+>
+> Универсальная установка/обновление:
+>
+> ```sh
+> wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync/main/install.sh \
+>   | sh -s -- --max-nodes 20
+> ```
 > **Версии проекта:** **[OpenWrt 24.x — opkg/IPK](https://github.com/Trogvars/podkop-sub-sync-openwrt24)** · [OpenWrt 25.x — apk/APK](https://github.com/Trogvars/podkop-sub-sync-openwrt25)
 > **История изменений:** [CHANGES.md](CHANGES.md)
 
