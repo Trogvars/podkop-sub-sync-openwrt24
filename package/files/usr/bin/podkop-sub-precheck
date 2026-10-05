@@ -13,6 +13,9 @@ die(){ log "ERROR: $*"; exit 1; }
 command -v jq >/dev/null 2>&1 || die "jq not installed"
 command -v sing-box >/dev/null 2>&1 || die "sing-box not installed"
 command -v curl >/dev/null 2>&1 || die "curl not installed"
+command -v sort >/dev/null 2>&1 || die "sort not installed"
+command -v head >/dev/null 2>&1 || die "head not installed"
+command -v cut >/dev/null 2>&1 || die "cut not installed"
 . /usr/lib/podkop/sing_box_config_facade.sh
 TEST_URL="$(uci -q get "${CFG}.${SEC}.precheck_url" || echo 'https://www.gstatic.com/generate_204')"
 EXPECTED_CODE="$(uci -q get "${CFG}.${SEC}.precheck_http_code" || echo '204')"
@@ -22,6 +25,8 @@ BATCH_SIZE="$(uci -q get "${CFG}.${SEC}.precheck_batch_size" || echo '6')"
 BASE_PORT="$(uci -q get "${CFG}.${SEC}.precheck_base_port" || echo '39000')"
 MIN_NODES="$(uci -q get "${CFG}.${SEC}.precheck_min_nodes" || echo '3')"
 MIN_PERCENT="$(uci -q get "${CFG}.${SEC}.precheck_min_percent" || echo '20')"
+MAX_NODES="$(uci -q get "${CFG}.${SEC}.precheck_max_nodes" || echo '0')"
+case "$MAX_NODES" in ''|*[!0-9]*) die "precheck_max_nodes must be an integer >= 0";; esac
 DNS_SERVER="$(uci -q get "${CFG}.${SEC}.precheck_dns_server" || uci -q get podkop.settings.bootstrap_dns_server || echo '1.1.1.1')"
 OUTBOUND_MARK=2097152
 http_code_ok(){
@@ -47,6 +52,8 @@ stop_test_singbox(){
 }
 TMP="$(mktemp -d /tmp/podkop-precheck.XXXXXX)" || die "cannot create temp dir"
 TEST_PID=""
+RANKED="$TMP/working-ranked.tsv"
+: >"$RANKED"
 cleanup(){ stop_test_singbox; rm -rf "$TMP"; }
 trap cleanup EXIT INT TERM
 log "Checking test URL: $TEST_URL"
@@ -62,6 +69,7 @@ log "Candidates : $TOTAL"
 log "Batch size : $BATCH_SIZE"
 log "Timeout    : ${TIMEOUT}s"
 log "Expected   : HTTP $EXPECTED_CODE"
+if [ "$MAX_NODES" -gt 0 ]; then log "Keep fastest: $MAX_NODES"; else log "Keep fastest: unlimited"; fi
 log ""
 while [ "$START" -le "$TOTAL" ]; do
   END=$((START+BATCH_SIZE-1)); [ "$END" -gt "$TOTAL" ] && END="$TOTAL"
@@ -99,7 +107,7 @@ while [ "$START" -le "$TOTAL" ]; do
     RESULT="$(curl -k -sS -x "http://127.0.0.1:${PORT}" --connect-timeout "$CONNECT_TIMEOUT" --max-time "$TIMEOUT" -o /dev/null -w '%{http_code} %{time_total}' "$TEST_URL" 2>/dev/null)"; CURL_RC=$?
     CODE="$(echo "$RESULT" | awk '{print $1}')"; TIME="$(echo "$RESULT" | awk '{print $2}')"; [ -n "$CODE" ] || CODE="000"
     if [ "$CURL_RC" -eq 0 ] && http_code_ok "$CODE"; then
-      MS="$(awk -v t="${TIME:-0}" 'BEGIN{printf "%.0f",t*1000}')"; printf '%s\n' "$LINK" >>"$OUTPUT"; GOOD=$((GOOD+1)); log "[$INDEX/$TOTAL] OK   ${MS}ms  $NAME"
+      MS="$(awk -v t="${TIME:-0}" 'BEGIN{printf "%.0f",t*1000}')"; printf '%s\t%s\n' "$MS" "$LINK" >>"$RANKED"; GOOD=$((GOOD+1)); log "[$INDEX/$TOTAL] OK   ${MS}ms  $NAME"
     else
       BAD=$((BAD+1)); log "[$INDEX/$TOTAL] FAIL HTTP=${CODE} rc=${CURL_RC}  $NAME"
     fi
@@ -107,7 +115,17 @@ while [ "$START" -le "$TOTAL" ]; do
   stop_test_singbox; START=$((END+1))
 done
 PERCENT=$((GOOD*100/TOTAL)); REQUIRED_NODES="$MIN_NODES"; [ "$TOTAL" -lt "$REQUIRED_NODES" ] && REQUIRED_NODES="$TOTAL"
-log ""; log "========================================"; log "Proxy precheck finished"; log "Total       : $TOTAL"; log "Working     : $GOOD"; log "Failed      : $BAD"; log "Parser fail : $PARSER_BAD"; log "Success     : ${PERCENT}%"; log "========================================"
 [ "$GOOD" -ge "$REQUIRED_NODES" ] || { log "ERROR: only $GOOD nodes passed; minimum $REQUIRED_NODES"; exit 20; }
 [ "$PERCENT" -ge "$MIN_PERCENT" ] || { log "ERROR: only ${PERCENT}% passed; minimum ${MIN_PERCENT}%"; exit 21; }
+
+SELECTED="$GOOD"
+if [ "$MAX_NODES" -gt 0 ] && [ "$GOOD" -gt "$MAX_NODES" ]; then SELECTED="$MAX_NODES"; fi
+SORTED_RANKED="$TMP/working-ranked.sorted"
+sort -n "$RANKED" >"$SORTED_RANKED"
+FASTEST_MS="$(awk 'NR==1{print $1; exit}' "$SORTED_RANKED")"
+SLOWEST_SELECTED_MS="$(awk -v n="$SELECTED" 'NR==n{print $1; exit}' "$SORTED_RANKED")"
+head -n "$SELECTED" "$SORTED_RANKED" | cut -f2- | sort -u >"$OUTPUT"
+ACTUAL_SELECTED="$(wc -l <"$OUTPUT" | tr -d ' ')"
+
+log ""; log "========================================"; log "Proxy precheck finished"; log "Total       : $TOTAL"; log "Working     : $GOOD"; log "Failed      : $BAD"; log "Parser fail : $PARSER_BAD"; log "Success     : ${PERCENT}%"; log "Selected    : $ACTUAL_SELECTED"; [ -n "$FASTEST_MS" ] && log "Fastest     : ${FASTEST_MS}ms"; [ -n "$SLOWEST_SELECTED_MS" ] && log "Cutoff      : ${SLOWEST_SELECTED_MS}ms"; log "========================================"
 exit 0
