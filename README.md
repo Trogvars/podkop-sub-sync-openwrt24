@@ -275,7 +275,7 @@ wget -O /tmp/sb-ext.sh https://raw.githubusercontent.com/EikeiDev/OpenWRT-sing-b
 sh /tmp/sb-ext.sh
 ```
 
-Установщик интерактивный. Для OpenWrt 24.x + Podkop он сохраняет штатную интеграцию `sing-box` в `opkg`, а рабочий бинарник заменяет на `sing-box-extended`.
+Вручную этот внешний installer интерактивный. В `podkop-sub-sync` 1.3.2 его запуск автоматизирован: выбирается последний стабильный релиз и рекомендуемый для роутера формат установки.
 
 2. **XHTTP patch для Podkop**
 
@@ -295,6 +295,27 @@ sing-box version
 grep -n 'xhttp)' /usr/lib/podkop/sing_box_config_facade.sh
 ```
 
+### Автоматическое восстановление XHTTP-зависимостей
+
+Начиная с версии **1.3.2**, если в конфиге установлено:
+
+```text
+option allow_xhttp '1'
+```
+
+то и installer, и `/usr/bin/podkop-sub-sync` сами проверяют необходимые компоненты.
+
+Если `sing-box-extended` отсутствует, автоматически:
+
+1. скачивается installer `EikeiDev/OpenWRT-sing-box-extended`;
+2. выбирается **первый стабильный релиз** (последний стабильный в списке);
+3. выбирается **рекомендуемый installer-ом формат** для конкретного роутера;
+4. после установки повторно проверяется `sing-box version`.
+
+Если Podkop не содержит обработчик `xhttp)`, автоматически скачивается и применяется `moix89/podkop-xhttp-patch`.
+
+Ручной ввод и TTY для этой процедуры больше не требуются.
+
 Для автоматической установки и проверки XHTTP-стека используйте:
 
 ```text
@@ -312,7 +333,7 @@ wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/m
       --with-xhttp
 ```
 
-При `allow_xhttp=1` updater теперь заранее проверяет наличие `sing-box-extended` и XHTTP-парсера Podkop. Если чего-то не хватает, он завершится **до скачивания подписки** с понятной ошибкой.
+При `allow_xhttp=1` updater автоматически восстанавливает XHTTP-зависимости **до скачивания подписки**: при отсутствии ставит `sing-box-extended`, затем при необходимости применяет Podkop XHTTP patch и только после успешной проверки продолжает синхронизацию.
 ## Установка одной командой
 
 На OpenWrt BusyBox `ash` лучше использовать pipe, а не bash process substitution.
@@ -384,7 +405,7 @@ config sync 'main'
         option interval '86400'
         option retry_interval '900'
 
-        option user_agent 'podkop-sub-sync-openwrt24/1.3'
+        option user_agent 'podkop-sub-sync-openwrt24/1.3.2'
         option send_hwid '0'
         option allow_xhttp '0'
 
@@ -706,7 +727,7 @@ find bin -name 'podkop-sub-sync_*.ipk'
 ## Установка IPK
 
 ```sh
-opkg install ./podkop-sub-sync_1.3.0-1_all.ipk
+opkg install ./podkop-sub-sync_1.3.2-1_all.ipk
 ```
 
 Пакет имеет:
@@ -728,7 +749,7 @@ PKG_RELEASE:=2
 Соберите новый пакет и установите:
 
 ```sh
-opkg install ./podkop-sub-sync_1.3.0-2_all.ipk
+opkg install ./podkop-sub-sync_1.3.2-2_all.ipk
 ```
 
 UCI-файл:
