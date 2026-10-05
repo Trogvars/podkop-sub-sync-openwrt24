@@ -1,5 +1,9 @@
 # CHANGES
 
+## Legacy status
+
+This repository is frozen at **1.3.2**. Development continues in the unified **Trogvars/podkop-sub-sync** project for OpenWrt 24.x and 25.x. The existing code and bundle remain unchanged as a legacy rollback/reference snapshot.
+
 История изменений **Podkop Subscription Sync**.
 
 Версии 24.x и 25.x развиваются синхронно по функциональности. Различия между ветками касаются прежде всего пакетного менеджера, формата пакета и особенностей OpenWrt.
