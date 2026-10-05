@@ -272,7 +272,7 @@ grep -n 'xhttp)' /usr/lib/podkop/sing_box_config_facade.sh
 Пример:
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/main/install-openwrt24.sh \
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/main/install.sh \
   | sh -s -- \
       --url 'https://example.com/sub/xxxxx' \
       --interval 86400 \
@@ -295,7 +295,7 @@ sh <(wget -O - URL)
 
 ```sh
 
-wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/refs/heads/main/install-openwrt24.sh \
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/main/install.sh \
     | sh -s -- \
         --url 'https://example.com/sub/xxxxx' \
         --interval 86400 \
@@ -305,7 +305,7 @@ wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/r
 Несколько стран:
 
 ```sh
-wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/refs/heads/main/install-openwrt24.sh \
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/main/install.sh \
     | sh -s -- \
         --url 'https://example.com/sub/xxxxx' \
         --interval 86400 \
