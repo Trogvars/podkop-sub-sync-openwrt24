@@ -1,5 +1,6 @@
 # Podkop Subscription Sync — OpenWrt 24.x
 > **Версии проекта:** **[OpenWrt 24.x — opkg/IPK](https://github.com/Trogvars/podkop-sub-sync-openwrt24)** · [OpenWrt 25.x — apk/APK](https://github.com/Trogvars/podkop-sub-sync-openwrt25)
+> **История изменений:** [CHANGES.md](CHANGES.md)
 
 Версия автоматического синхронизатора VPN-подписки для **Podkop + sing-box**, адаптированная специально для OpenWrt 24.x.
 
