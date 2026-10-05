@@ -31,9 +31,9 @@
 4. Фильтрует отключённые протоколы.
 5. При необходимости исключает XHTTP.
 6. Применяет фильтрацию стран: whitelist через `include_country` и blacklist через `exclude_country`.
-7. Реально проверяет каждую оставшуюся ноду через временный sing-box.
-8. Оставляет только рабочие proxy.
-9. Сравнивает итоговый список по SHA256.
+7. Реально проверяет каждую оставшуюся ноду через временный sing-box и измеряет время доступа.
+8. Если задан `precheck_max_nodes`, оставляет только X самых быстрых рабочих нод.
+9. Стабилизирует выбранный список и сравнивает его по SHA256.
 10. Обновляет Podkop только если список изменился.
 11. После обновления проверяет сгенерированный sing-box config.
 12. При ошибке выполняет rollback.
@@ -85,10 +85,16 @@ XHTTP filter
 Country include/exclude filter
        |
        v
-Proxy precheck
+Proxy precheck + latency
        |
        v
-Working nodes only
+Working nodes
+       |
+       v
+Keep fastest X
+       |
+       v
+Stable selected list
        |
        v
 SHA256
@@ -186,7 +192,8 @@ gzip -t
 2. создаёт отдельный local mixed inbound;
 3. привязывает каждый inbound к конкретному outbound;
 4. выполняет HTTP request через proxy;
-5. сохраняет только рабочие ноды.
+5. сохраняет измеренное время каждой рабочей ноды;
+6. после полного теста выбирает заданное число самых быстрых.
 
 ### `/usr/bin/podkop-sub-sync-daemon`
 
@@ -354,7 +361,7 @@ config sync 'main'
         option interval '86400'
         option retry_interval '900'
 
-        option user_agent 'podkop-sub-sync-openwrt24/1.0'
+        option user_agent 'podkop-sub-sync-openwrt24/1.3'
         option send_hwid '0'
         option allow_xhttp '0'
 
@@ -377,6 +384,7 @@ config sync 'main'
         option precheck_base_port '39000'
         option precheck_min_nodes '3'
         option precheck_min_percent '20'
+        option precheck_max_nodes '20'
 ```
 
 ## Основные параметры
@@ -522,6 +530,66 @@ option precheck_min_nodes '3'
 option precheck_min_percent '20'
 ```
 
+### Ограничение числа рабочих нод: `precheck_max_nodes`
+
+После полной проверки доступности скрипт знает время ответа каждой успешно прошедшей ноды.
+
+```text
+option precheck_max_nodes '20'
+```
+
+означает: протестировать все кандидаты, затем оставить только **20 самых быстрых рабочих нод**.
+
+```text
+option precheck_max_nodes '0'
+```
+
+отключает ограничение и сохраняет все рабочие ноды.
+
+Порядок работы:
+
+```text
+all candidates
+      ↓
+full availability test
+      ↓
+working nodes + measured latency
+      ↓
+sort by response time
+      ↓
+keep fastest X
+      ↓
+stable URI sort
+      ↓
+Podkop URLTest
+```
+
+Параметры `precheck_min_nodes` и `precheck_min_percent` проверяются **до** ограничения Top X. Например, если работают 45 из 60 нод, safety-проверка видит все 45, а при `precheck_max_nodes=20` в Podkop попадут 20 самых быстрых.
+
+После выбора Top X URI сортируются стабильно. Поэтому изменение только порядка измеренных задержек не вызывает лишний restart Podkop; SHA256 меняется, когда меняется фактический состав выбранных нод.
+
+В итоговом логе precheck отображаются:
+
+```text
+Working     : 45
+Selected    : 20
+Fastest     : 187ms
+Cutoff      : 841ms
+```
+
+Настройка через UCI:
+
+```sh
+uci set podkop-sub-sync.main.precheck_max_nodes='20'
+uci commit podkop-sub-sync
+/etc/init.d/podkop-sub-sync restart
+```
+
+Или при установке:
+
+```sh
+--max-nodes 20
+```
 ## Проверка
 
 Ручной запуск:
@@ -615,7 +683,7 @@ find bin -name 'podkop-sub-sync_*.ipk'
 ## Установка IPK
 
 ```sh
-opkg install ./podkop-sub-sync_1.2.0-1_all.ipk
+opkg install ./podkop-sub-sync_1.3.0-1_all.ipk
 ```
 
 Пакет имеет:
@@ -637,7 +705,7 @@ PKG_RELEASE:=2
 Соберите новый пакет и установите:
 
 ```sh
-opkg install ./podkop-sub-sync_1.2.0-2_all.ipk
+opkg install ./podkop-sub-sync_1.3.0-2_all.ipk
 ```
 
 UCI-файл:
@@ -687,13 +755,13 @@ Working: 41
 Failed: 25
 ```
 
-В Podkop записываются только:
+При `precheck_max_nodes=20` выбираются 20 самых быстрых рабочих нод:
 
 ```text
-41 working proxies
+Selected: 20
 ```
 
-Далее Podkop URLTest сам выбирает самый быстрый сервер.
+Именно эти 20 нод записываются в Podkop URLTest. Далее Podkop продолжает выбирать лучший сервер уже внутри этого сокращённого набора.
 
 ## Отличия от версии OpenWrt 25.x
 
