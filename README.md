@@ -232,6 +232,55 @@ jq
 ca-bundle
 ```
 
+## XHTTP / sing-box-extended
+
+XHTTP отключён по умолчанию. Чтобы использовать VLESS Reality XHTTP, нужны **оба** компонента:
+
+1. **sing-box-extended**
+
+```sh
+wget -O /tmp/sb-ext.sh https://raw.githubusercontent.com/EikeiDev/OpenWRT-sing-box-extended/refs/heads/main/install.sh
+sh /tmp/sb-ext.sh
+```
+
+Установщик интерактивный. Для OpenWrt 24.x + Podkop он сохраняет штатную интеграцию `sing-box` в `opkg`, а рабочий бинарник заменяет на `sing-box-extended`.
+
+2. **XHTTP patch для Podkop**
+
+```sh
+wget -O /tmp/patch.sh https://raw.githubusercontent.com/moix89/podkop-xhttp-patch/main/install.sh
+sh /tmp/patch.sh
+```
+
+Патч добавляет обработчик `xhttp)` в `/usr/lib/podkop/sing_box_config_facade.sh` и исправляет совместимость Podkop с extended-версией sing-box.
+
+После обновления Podkop патч может быть перезаписан, поэтому его нужно применить повторно.
+
+Проверка:
+
+```sh
+sing-box version
+grep -n 'xhttp)' /usr/lib/podkop/sing_box_config_facade.sh
+```
+
+Для автоматической установки и проверки XHTTP-стека используйте:
+
+```text
+--with-xhttp
+```
+
+Пример:
+
+```sh
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/main/install-openwrt24.sh \
+  | sh -s -- \
+      --url 'https://example.com/sub/xxxxx' \
+      --interval 86400 \
+      --exclude RU \
+      --with-xhttp
+```
+
+При `allow_xhttp=1` updater теперь заранее проверяет наличие `sing-box-extended` и XHTTP-парсера Podkop. Если чего-то не хватает, он завершится **до скачивания подписки** с понятной ошибкой.
 ## Установка одной командой
 
 На OpenWrt BusyBox `ash` лучше использовать pipe, а не bash process substitution.
