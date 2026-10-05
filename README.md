@@ -241,6 +241,29 @@ jq
 ca-bundle
 ```
 
+## Универсальный bootstrap installer
+
+`install.sh` автоматически определяет версию OpenWrt и выбирает нужную ветку проекта:
+
+```text
+OpenWrt 24.* -> podkop-sub-sync-openwrt24 -> install-openwrt24.sh
+OpenWrt 25.* -> podkop-sub-sync-openwrt25 -> install-podkop-sub-sync.sh
+```
+
+Все аргументы передаются выбранному installer-у без изменений, поэтому одна команда подходит для обеих веток:
+
+```sh
+wget -qO- https://raw.githubusercontent.com/Trogvars/podkop-sub-sync-openwrt24/main/install.sh \
+  | sh -s -- \
+      --max-nodes 20
+```
+
+Можно одновременно передавать `--url`, `--interval`, `--max-nodes`, `--include`, `--exclude`, `--with-xhttp` и `--no-start`.
+
+При запуске bootstrap выводит определённую версию OpenWrt и выбранный репозиторий. Для версий, отличных от 24.x и 25.x, установка останавливается с ошибкой.
+
+> `install.sh` в обоих репозиториях одинаковый: даже если запустить ссылку из ветки 24.x на OpenWrt 25.x (или наоборот), он скачает правильную ветку.
+
 ## XHTTP / sing-box-extended
 
 XHTTP отключён по умолчанию. Чтобы использовать VLESS Reality XHTTP, нужны **оба** компонента:
