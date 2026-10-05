@@ -2,11 +2,12 @@
 set -e
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 SRC="$ROOT/package/files"
-SUB_URL=""; INTERVAL=""; INCLUDES=""; EXCLUDES=""; NO_START=0; WITH_XHTTP=0
+SUB_URL=""; INTERVAL=""; MAX_NODES=""; INCLUDES=""; EXCLUDES=""; NO_START=0; WITH_XHTTP=0
 usage(){ cat <<'EOF'
 Usage: install-openwrt24.sh [options]
   --url URL        VPN subscription URL
   --interval SEC   Refresh interval in seconds (default 86400)
+  --max-nodes N    Keep only N fastest working nodes after precheck (0 = unlimited)
   --include CC     Keep only this country; repeatable: --include RU --include KZ
   --exclude CC     Exclude country; repeatable: --exclude RU --exclude UZ
   --with-xhttp     Install/check sing-box-extended + Podkop XHTTP patch and enable XHTTP
@@ -17,6 +18,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     --url) SUB_URL="$2"; shift 2;;
     --interval) INTERVAL="$2"; shift 2;;
+    --max-nodes) MAX_NODES="$2"; shift 2;;
     --include) INCLUDES="${INCLUDES}${INCLUDES:+ }$2"; shift 2;;
     --exclude) EXCLUDES="${EXCLUDES}${EXCLUDES:+ }$2"; shift 2;;
     --with-xhttp) WITH_XHTTP=1; shift;;
@@ -106,6 +108,7 @@ fi
 
 [ -n "$SUB_URL" ] && { uci set podkop-sub-sync.main.url="$SUB_URL"; uci set podkop-sub-sync.main.enabled='1'; }
 [ -n "$INTERVAL" ] && uci set podkop-sub-sync.main.interval="$INTERVAL"
+if [ -n "$MAX_NODES" ]; then case "$MAX_NODES" in ''|*[!0-9]*) echo "ERROR: max-nodes must be an integer >= 0"; exit 2;; esac; uci set podkop-sub-sync.main.precheck_max_nodes="$MAX_NODES"; fi
 if [ -n "$INCLUDES" ]; then
   uci -q delete podkop-sub-sync.main.include_country || true
   for cc in $INCLUDES; do
