@@ -12,7 +12,7 @@ BRANCH="${PODKOP_SYNC_BRANCH:-main}"
 OPENWRT_VERSION="${DISTRIB_RELEASE:-}"
 
 if [ -z "$OPENWRT_VERSION" ] && [ -r /etc/os-release ]; then
-  OPENWRT_VERSION="$(sed -n 's/^VERSION_ID=["\x27]*\([^"\x27]*\)["\x27]*$/\1/p' /etc/os-release | head -n 1)"
+  OPENWRT_VERSION="$(grep '^VERSION_ID=' /etc/os-release | head -n 1 | cut -d= -f2 | tr -d '"')"
 fi
 
 case "$OPENWRT_VERSION" in
