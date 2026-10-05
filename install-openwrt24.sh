@@ -2,12 +2,13 @@
 set -e
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
 SRC="$ROOT/package/files"
-SUB_URL=""; INTERVAL=""; EXCLUDES=""; NO_START=0
+SUB_URL=""; INTERVAL=""; EXCLUDES=""; NO_START=0; WITH_XHTTP=0
 usage(){ cat <<'EOF'
 Usage: install-openwrt24.sh [options]
   --url URL        VPN subscription URL
   --interval SEC   Refresh interval in seconds (default 86400)
   --exclude CC     Repeatable: --exclude RU --exclude UZ
+  --with-xhttp     Install/check sing-box-extended + Podkop XHTTP patch and enable XHTTP
   --no-start       Install and enable, but do not start
 EOF
 }
@@ -16,6 +17,7 @@ while [ "$#" -gt 0 ]; do
     --url) SUB_URL="$2"; shift 2;;
     --interval) INTERVAL="$2"; shift 2;;
     --exclude) EXCLUDES="${EXCLUDES}${EXCLUDES:+ }$2"; shift 2;;
+    --with-xhttp) WITH_XHTTP=1; shift;;
     --no-start) NO_START=1; shift;;
     -h|--help) usage; exit 0;;
     *) echo "Unknown option: $1"; usage; exit 2;;
@@ -32,6 +34,53 @@ opkg update
 for p in curl jq ca-bundle; do
   opkg status "$p" 2>/dev/null | grep -q '^Status: .* installed' || opkg install "$p"
 done
+SB_EXT_URL="https://raw.githubusercontent.com/EikeiDev/OpenWRT-sing-box-extended/refs/heads/main/install.sh"
+PODKOP_XHTTP_PATCH_URL="https://raw.githubusercontent.com/moix89/podkop-xhttp-patch/main/install.sh"
+
+fetch_script(){
+  url="$1"; dst="$2"
+  if command -v wget >/dev/null 2>&1; then
+    wget -O "$dst" "$url"
+  else
+    curl -fsSL "$url" -o "$dst"
+  fi
+}
+
+ensure_xhttp_stack(){
+  if ! sing-box version 2>/dev/null | grep -qi extended; then
+    echo "XHTTP: sing-box-extended is required."
+    [ -r /dev/tty ] || {
+      echo "ERROR: sing-box-extended installer is interactive and no TTY is available."
+      echo "Run manually: wget -O /tmp/sb-ext.sh $SB_EXT_URL && sh /tmp/sb-ext.sh"
+      exit 1
+    }
+    fetch_script "$SB_EXT_URL" /tmp/sb-ext.sh
+    chmod 700 /tmp/sb-ext.sh
+    echo "Starting interactive sing-box-extended installer..."
+    sh /tmp/sb-ext.sh </dev/tty >/dev/tty 2>&1
+  fi
+
+  sing-box version 2>/dev/null | grep -qi extended || {
+    echo "ERROR: sing-box-extended is still not active."
+    exit 1
+  }
+
+  if ! grep -q '^[[:space:]]*xhttp)' /usr/lib/podkop/sing_box_config_facade.sh; then
+    echo "XHTTP: installing Podkop XHTTP patch..."
+    fetch_script "$PODKOP_XHTTP_PATCH_URL" /tmp/podkop-xhttp-patch.sh
+    chmod 700 /tmp/podkop-xhttp-patch.sh
+    sh /tmp/podkop-xhttp-patch.sh
+  fi
+
+  grep -q '^[[:space:]]*xhttp)' /usr/lib/podkop/sing_box_config_facade.sh || {
+    echo "ERROR: Podkop XHTTP parser patch was not detected after installation."
+    exit 1
+  }
+
+  echo "XHTTP prerequisites OK:"
+  sing-box version | head -n 1
+  echo "Podkop XHTTP parser: enabled"
+}
 
 BACKUP="/root/podkop-sub-sync-openwrt24-backup-$(date +%Y%m%d-%H%M%S)"
 mkdir -p "$BACKUP"
@@ -62,7 +111,12 @@ if [ -n "$EXCLUDES" ]; then
     uci add_list podkop-sub-sync.main.exclude_country="$cc"
   done
 fi
+[ "$WITH_XHTTP" = 1 ] && uci set podkop-sub-sync.main.allow_xhttp='1'
 uci commit podkop-sub-sync
+
+if [ "$(uci -q get podkop-sub-sync.main.allow_xhttp || echo 0)" = 1 ]; then
+  ensure_xhttp_stack
+fi
 
 /bin/ash -n /usr/bin/podkop-sub-sync
 /bin/ash -n /usr/bin/podkop-sub-precheck
